@@ -1,0 +1,59 @@
+---
+title: "CBBProject"
+output:
+  word_document: default
+  html_document: default
+date: "2023-10-08"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+#Reading and seeing the CSV file we used.
+CBB <- read.csv('PSTAT126ProjectCBB.csv')
+CBB
+skim_cbb<-skim(CBB)
+skim_cbb
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+#We measured each stats correlation to winning here.
+cor(CBB['W'], y=CBB['G'])
+cor(CBB['W'], y=CBB['EFG_O'])
+cor(CBB['W'], y=CBB['EFG_D'])
+cor(CBB['W'], y=CBB['TOR'])
+cor(CBB['W'], y=CBB['TORD'])
+cor(CBB['W'], y=CBB['ORB'])
+cor(CBB['W'], y=CBB['DRB'])
+cor(CBB['W'], y=CBB['FTR'])
+cor(CBB['W'], y=CBB['FTRD'])
+```
+
+```{r, echo= FALSE}
+#We used the chunk of code below to gather Average Win Rates across each postseason standing. We simply replaced the word "Champions" with each postseason standing (R32, R64, 2nd, etc.) and noted down the average win rate.
+post <- unique(CBB$POSTSEASON)
+post
+final_standing <- CBB[CBB$POSTSEASON == "Champions", ]
+mean(final_standing$W)/mean(final_standing$G)
+#We used the chunk of code below to gather Average Win Rates across each Conference. We replaced the term "B12" with each Conference (B10, SEC, P12, BW, etc.) and noted down the average win rate.
+conf <- unique(CBB$CONF)
+conf
+conf_unique <- CBB[CBB$CONF == "B12", ]
+mean(conf_unique$W)/mean(conf_unique$G)
+CBB
+#We used the information gathered here to create graphs using Excel
+```
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

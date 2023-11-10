@@ -1,0 +1,11 @@
+── Data Summary ────────────────────────
+                           Values
+Name                       CBB   
+Number of rows             363   
+Number of columns          14    
+_______________________          
+Column type frequency:           
+  character                4     
+  numeric                  10    
+________________________         
+Group variables            None  
