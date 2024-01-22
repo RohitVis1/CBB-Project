@@ -1,0 +1,88 @@
+---
+title: "CBBProjectStep4"
+output: word_document
+date: "2023-12-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r ridge}
+CBB <- read.csv('PSTAT126ProjectCBB.csv')
+rows_to_remove <- seq(4, nrow(CBB), by = 4)
+cbb_small <- CBB[rows_to_remove, ]
+cbb_indexed <- CBB[-rows_to_remove, ]
+cbb_indexed
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+require(MASS)
+par(mar = c(2, 2, 0.5, 0.5))
+seatpos <- scale((seatpos), center = TRUE, scale = FALSE)
+seatpos <- as.data.frame(seatpos)
+rgmod <- lm.ridge(hipcenter ~ ., seatpos, lambda = seq(0,100, len=100))
+matplot(rgmod$lambda, coef(rgmod), type="l", xlab ="lambda", ylab = "Beta hat", cex=0.8)
+
+```{r ridge}
+require(glmnet)
+#Ridge Regression
+cv_model <- cv.glmnet(x.full, y.full, type.measure = "mse", alpha = 0, family = "gaussian")
+#find optimal lambda value that minimizes test MS
+best_lambda <- cv_model$lambda.min
+predict_R <- predict(cv_model, s = best_lambda, newx = x.test)
+mean((y.test - predict_R)^2)
+predict_R <- matrix(predict_R)
+```
+```{r Lasso}
+cv_model <- cv.glmnet(x.full, y.full, type.measure = "mse", alpha = 1, family = "gaussian")
+#find optimal lambda value that minimizes test MS
+best_lambda <- cv_model$lambda.min
+predict_L <- predict(cv_model, s = best_lambda, newx = x.test)
+mean((y.test - predict_L)^2)
+predict_L <- matrix(predict_L)
+```
+
+
+```{r MLR}
+#MLR Regression
+linear_model_1 <- lm(Win.PCT ~ EFG_O + TORD + ORB, data = cbb_small)
+predict_MLR <- predict(linear_model_1, newx = x.test)
+predict_MLR <- matrix(predict_MLR)
+```
+
+
+``` {r graph}
+library(ggplot2)
+regression_data <- data.frame(data = y.test, MLR = predict_MLR, Ridge = predict_R, Lasso = predict_L)
+class(regression_data[,'Ridge'])
+
+ggplot(regression_data, aes(x = data, y= MLR, color = "MLR"))+
+  geom_point()+
+  geom_smooth(method = "lm", formula = y ~ x, se = F, color = "green")+
+  labs(title = 'Actual vs Predicted Values', x = "Actual", y = 'Predicted')+
+  geom_point(data = regression_data, aes(x = data, y= Ridge, color = "Ridge"))+
+  geom_smooth(data = regression_data , aes(x = data, y = Ridge) , method = "lm", formula = y ~ x, se = F, color = "blue")+
+  geom_point(data = regression_data, aes(x = data, y= Lasso, color = "Lasso"))+
+  geom_smooth(data = regression_data , aes(x = data, y= Lasso) , method = "lm", formula = y ~ x, se = F, color = "red")
+```
+
+
+```{r PCR}
+library(pls)
+pcr_model <- pcr(Win.PCT ~ TORD + EFG_O + ORB , data = cbb_indexed, scale = TRUE, validation = "CV")
+summary(pcr_model)
+plot(pcr_model, main = "PCR - Predicted Values vs Actual Values", 
+     xlab = 'Actual Win %',
+     ylab = 'Predicted Win %')
+```

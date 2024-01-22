@@ -1,0 +1,120 @@
+---
+title: "ProjectCBBStep3"
+output:
+  word_document: default
+  html_document: default
+date: "2023-11-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+For this project, we are using Kaggle’s dataset as our population, which includes statistics for every college basketball team during the 2022-23 season: https://www.kaggle.com/datasets/andrewsundberg/college-basketball-dataset/
+
+In the previous step, we calculated the winning percentage of every team in order to look at the correlation between EFG_O and winning percentage, and compare that to the correlation between EFG_D and winning percentage. 
+
+In our case, the response variable is winning percentage. Winning percentage wasn’t a part of our original data, but we thought that using winning percentage would be more useful than overall wins when studying the correlation between a statistic and a team win. In order to calculate this, we used a transformation by diving every number in the win column by their number of games played. This is a transformation because we changed the numbers of our data to better suit our analysis.
+
+The explanatory variables of our models are EFG_O and EFG_D, which describe the efficiency of a team's shots from the court for offense and defense.
+
+
+```{r cbb}
+#Reading and seeing the CSV file we used.
+CBB <- read.csv('PSTAT126ProjectCBB.csv')
+cor(CBB$Win.PCT, y=CBB$EFG_O)
+cor(CBB$Win.PCT, y=CBB$EFG_D)
+```
+For the next step, we had to choose what part of data aside since the best teams were at the start so we couldn’t choose any specific portion to take out. We chose to take one out of every four rows out of the data so that we would have a representative sample of our data.
+
+```{r indexing}
+# Removing Every 4 rows to set aside
+rows_to_remove <- seq(4, nrow(CBB), by = 4)
+cbb_indexed <- CBB[-rows_to_remove, ]
+```
+## Pairs Plot
+
+Next, we studied the correlation between our explanatory variables, offensive efficiency and defensive efficiency. This correlation came out at -0.137. This is not a very substantial correlation, but it is still noteworthy. The negative value is because the defensive field goal percentage is down-sloping, so we can state that a better defense can be a slight indicator that a team’s offense might also be better, and vice versa.
+
+```{r fig.cap = 'panel'}
+library(ggplot2)
+library(GGally)
+
+columns <- c("EFG_O", "EFG_D", "Win.PCT")
+
+ggpairs(cbb_indexed[, columns])
+```
+The correlation between win percentage and our explanatory variables is very high. The correlation to offensive efficiency is 0.611 and the correlation to defensive efficiency is 0.601. We didn’t use any quadratic or log transformations because our data already looked highly linear, and we had no reason to change it. We also checked the relationship between our explanatory variables: offensive efficiency and defensive efficiency. We received a correlation of -0.163. The value is negative because a lower defensive efficiency means the team played better defense. This value indicates a small, yet significant correlation that indicates that teams with a good defense are more likely than not to have a good offense, and vice versa. It also means that teams that are very poor defensively are less likely to be very good offensively, and vice versa.
+
+So far, we have only used feature engineering to transform overall wins into winning percentage. In order to do this, we simply divided wins by overall games played for every team in our dataset. We did this so that we could have a more significant correlation between winning and our explanatory variables, because not all teams played the same number of games. 
+
+For our case, we won’t be using interaction variables because they would either be redundant, or the outcome wouldn’t give us any new information. For example, if we added the offensive and defensive efficiency of a team, it would equal the entire winning percentage.
+
+To explain what models we should use, we are evaluating how different variables affect R^2 because we want the model to fit as well as possible, as well as the estimation of each variable when compared to wins. We used up to 2, 3 or 4 different variables to test this. 
+
+## Modeling
+We created and tested the fit of many different models. We started with either EFG_O or EFG_D, and then started adding variables to see which would contribute the most to a higher R^2, which means a better fit. The best options we received using defensive efficiency was modeling EFG_D, TOR, and DRB to winning percentage, where we got an R^2 of 0.4716 and adj-R^2 of 0.4657. This meant we had an okay model, but we were able to find a better one when we modeled EFG_O, TORD, and ORB to winning percentage. For further assurance, we checked the MSE of each of the models. The model involving EFG_O had an MSE of 138.3, and the model involving EFG_D had an MSE of 160.6.
+
+After looking through all the different options, we concluded that our best option was to use this combination:
+EFG_O + TORD + ORB
+In this model, all three of the variables contributed to a stronger combination, and higher R^2.
+
+To check if our coefficients are statistically significant, we can set up a hypothesis testing:
+Ho: $β_i ≥ 0$
+Ha: $β_i < 0$
+To test this hypothesis, we checked if the p-value associated with the coefficient is lower than our significance level, α=0.05:
+linear_model_1 <- lm(Win.PCT ~ (EFG_O + TORD + ORB), data = cbb_indexed)
+
+```{r models}
+linear_model_1 <- lm(Win.PCT ~ EFG_O + TORD + ORB, data = cbb_indexed)
+summary(linear_model_1)
+anova(linear_model_1)
+```
+In this model, it is clear that offensive efficiency or EFG_O has the largest bearing on win percentage. However, turnovers-forced (TOR) and rebounding (ORB) were statistically significant parts of this model. Although it was part of the original dataset, EFG_O does account for a multitude of statistics, such as 2 point shooting and 3 point shooting. This can serve as an explanation as to why EFG_O has a higher bearing on the model over turnovers-forced and rebounding.
+
+The R^2 of our model is 0.5448, which means the model has a decent fit in which a good amount of the variability is explained by the independent variables EFG_O, TORD, and ORB. The adj-R^2 gives a similar result, at 0.5398.
+
+A high R^2 does not guarantee the model will accurately describe the population. There can be edge cases like having too many predictors which might fit the training data well, but it may not generalize well to new, unseen data. It is also possible that irrelevant predictors can lead to a higher R^2 while not contributing meaningful information about the relationship between predictors and the response variable
+
+## Influential Points
+We created a plot that showed us the teams with the highest Cook's distance, and saw one point that was far ahead of the rest. This outlying point in our data was South Carolina State. Looking at their stats, it makes a lot of sense they are an outlier. They won a very poor 5 games out of 30 (16.67 Win.%), and shot very poorly from the court(EFG_O=46.9), but they happened to have outstanding scores in both ORB and TORD. To make sure they were an outlier, we ran the same model without South Carolina State and we indeed saw that our new R2 was a little bit higher, at 0.5526 and our adj-R2 improved to 0.5476. We also noticed that both ORB and TORD became more significant, as their P-values lowered. 
+```{r plots}
+library(broom)
+inf <- augment(linear_model_1)
+Cooks_value <- inf$.cooksd
+Row_Names <- inf$.rownames
+plot(Row_Names, Cooks_value, main = 'Cooks Influential Points for each Team')
+```
+Our assumption with the outlier is that South Carolina State had players who were hustling and trying hard, which improved their rebounding and their ability to steal balls, but they just didn’t have the talent level necessary to compete with their opponents on a nightly basis, and they became outclassed.
+
+
+## Confidence and PredictionIntervals 
+
+
+```{r intervals}
+confidence_interval_all <- t.test(cbb_indexed$Win.PCT, conf.level = 0.95)$conf.int
+confidence_interval_all
+
+predictions <- predict(linear_model_1, newdata = cbb_indexed, interval = "prediction")
+confidence <- predict(linear_model_1, newdata = cbb_indexed, interval = "confidence")
+min_pred <- predictions[which.min(predictions[, 1])]
+min_conf<-confidence[which.min(confidence[, 1])]
+max_conf<-confidence[which.max(confidence[, 1])]
+max_pred<-predictions[which.max(predictions[, 1])]
+
+```
+The confidence interval for the mean predicted values of the combined data is (51.75078, 55.88166). We also have confidence intervals and prediction intervals for the team with the highest win percentage and the lowest win percentage:
+
+Min Predict: Mean:18.13393, Lower Bound: -5.39492558,  Upper Bound:41.66279
+Min Confidence: Mean:18.13393, Lower Bound:13.94355, Upper Bound:22.32431
+Max Predict: Mean:88.27962, Lower Bound:64.74266909, Upper Bound:111.81657
+Max Confidence: Mean: 88.27962, Lower Bound: 84.04404,  Upper Bound:92.51520
+
+The highest win percentage belongs to Gonzaga. Obviously the upper bound of this prediction is over 100 and that is impossible, so the upper bound is essentially just 100 percent. The lowest win percentage belongs to Cal or UC Berkeley. This team has a prediction interval with values less than 0. Once again, this is impossible so the lower bound is essentially 0 percent.
+
+## Conclusion
+
+The linear model that we have chosen appears to represent winning percentage quite effectively. We went through several different potential variables. Something that was very interesting was the fact that we only used offensive statistics in our model rather than defensive statistics. Most of the quantitative variables in our dataset can be split into offensive variables and defensive variables. We used step-wise modeling for both of these categories and eventually came to our conclusion that the model with offensive variables was the best one. 
+There were some influential points however. The most egregious of these was South Carolina State, who had great scores for the turnovers and rebounds. There were some other dots on the graph that could be seen as influential as well. The vast majority of data fit the model very well though. 
